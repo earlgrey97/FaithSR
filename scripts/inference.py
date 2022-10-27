@@ -88,7 +88,7 @@ def run():
             input_cuda = input_batch.cuda().float()
             tic = time.time()
             ## 
-            result_batch, mid_latent = run_on_batch(input_cuda, net, opts)
+            result_batch, latent = run_on_batch(input_cuda, net, opts)
             ##
             toc = time.time()
             global_time.append(toc - tic)
@@ -96,7 +96,7 @@ def run():
         for i in range(opts.test_batch_size):
             ##
             if opts.save_latents:
-                torch.save(mid_latent[i], f"w_vecs/{file_nums[i]}.pt")
+                torch.save(latent[i], f"w_vecs/{file_nums[i]}.pt")
             ##
             result = tensor2im(result_batch[i])
             im_path = dataset.paths[global_i]
@@ -136,17 +136,17 @@ def run():
 ##
 def calc_code(w_conf, sigma_conf, w_i, sigma_i): # w is 512 * 1
     # sigma_conf < sigma_i for all i in each level
-    print("--- calc ---")
-    print(sigma_conf, sigma_i)
+    #print("--- calc ---")
+    #print(sigma_conf, sigma_i)
     sigma_sum = sigma_i + sigma_conf
-    print("sigma_i", sigma_i)
-    print("sigma_conf", sigma_conf)
-    print("sigma_sum", sigma_sum)
+    # print("sigma_i", sigma_i)
+    # print("sigma_conf", sigma_conf)
+    # print("sigma_sum", sigma_sum)
 
-    print("w_i[0]", w_i[0])
-    print("w_conf[0]", w_conf[0])
+    # print("w_i[0]", w_i[0])
+    # print("w_conf[0]", w_conf[0])
     new_code = (sigma_i/sigma_sum)*w_i + (sigma_conf/sigma_sum)*w_conf
-    print("new_code[0]", new_code[0])
+    # print("new_code[0]", new_code[0])
     return new_code
 
 def normalize_sigma(sigma): # sigma is list with len 18
@@ -156,12 +156,12 @@ def normalize_sigma(sigma): # sigma is list with len 18
     return new_sigma
 
 def latent_ops(codes, sigma):
-    print(codes.shape)
+    #print(codes.shape)
     sigma = sigma.tolist()
     # print("sigma", sigma)
-    sigma = normalize_sigma(sigma)
+    #sigma = normalize_sigma(sigma)
     # print("norm sigma", sigma)
-    print("----- do latent operations -----")
+    #print("----- do latent operations -----")
     #print("sigma: ", sigma)
     # print("codes")
     # print(codes)
@@ -198,8 +198,8 @@ def latent_ops(codes, sigma):
     res = torch.stack((new_codes[0],new_codes[1],new_codes[2],new_codes[3],new_codes[4],new_codes[5],
                         new_codes[6],new_codes[7],new_codes[8],new_codes[9],new_codes[10],new_codes[11],
                         new_codes[12],new_codes[13],new_codes[14],new_codes[15],new_codes[16],new_codes[17]))
-    #print(res.shape)
-    return res
+    print(res.shape)
+    return torch.reshape(res,(1,18,512))
 ##
 
 def run_on_batch(inputs, net, opts):
@@ -214,8 +214,8 @@ def run_on_batch(inputs, net, opts):
 
         #latent = net.get_code(inputs, 5)
         ## do latent ops
+        latent, sigma = net.get_code_w_sigma(inputs, 10)
         if opts.do_latent_ops:
-            latent, sigma = net.get_code_w_sigma(inputs, 10)
             # compute sigma of hr
             # if opts.resize_factors == '1' and opts.test_batch_size == 1:
             #     sigma_list = sigma.tolist()[0]
@@ -224,18 +224,20 @@ def run_on_batch(inputs, net, opts):
             #         # print("sigma to avg ", sigmas_to_avg[i])
             #         # print("sigma_list ",sigma_list[i])
             #         sigmas_to_avg[i].append(sigma_list[i])
+            
             if opts.test_batch_size == 1:
                 new_latent = latent_ops(latent[0], sigma[0])
-            elif opts.test_batch_size == 2:
-                new_latent = torch.stack((latent_ops(latent[0], sigma[0]), latent_ops(latent[1], sigma[1])))
-            elif opts.test_batch_size == 4:
-                new_latent = torch.stack((latent_ops(latent[0], sigma[0]), latent_ops(latent[1], sigma[1]), latent_ops(latent[2], sigma[2]), latent_ops(latent[3], sigma[3])))
+            # elif opts.test_batch_size == 2:
+            #     new_latent = torch.stack((latent_ops(latent[0], sigma[0]), latent_ops(latent[1], sigma[1])))
+            # elif opts.test_batch_size == 4:
+            #     new_latent = torch.stack((latent_ops(latent[0], sigma[0]), latent_ops(latent[1], sigma[1]), latent_ops(latent[2], sigma[2]), latent_ops(latent[3], sigma[3])))
             else:
                 print("invalid test batch size, should be 1, 2 or 4")
             ##
             result_batch, latent = net(new_latent, randomize_noise=False, resize=opts.resize_outputs, input_code=True, return_latents=True)
         else:
-            result_batch, latent = net(inputs, randomize_noise=False, resize=opts.resize_outputs, return_latents=True)
+            result_batch, latent = net(latent, randomize_noise=False, resize=opts.resize_outputs, input_code=True, return_latents=True)
+            #result_batch, latent = net(inputs, randomize_noise=False, resize=opts.resize_outputs, return_latents=True)
     else:
         latent_mask = [int(l) for l in opts.latent_mask.split(",")]
         result_batch = []
