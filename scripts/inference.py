@@ -87,11 +87,8 @@ def run():
         with torch.no_grad():
             input_cuda = input_batch.cuda().float()
             tic = time.time()
-            ## for latent vector pool
-            if opts.do_latent_ops:
-                result_batch, mid_latent, sigma = run_on_batch(input_cuda, net, opts)
-            else:
-                result_batch, mid_latent = run_on_batch(input_cuda, net, opts)
+            ## 
+            result_batch, mid_latent = run_on_batch(input_cuda, net, opts)
             ##
             toc = time.time()
             global_time.append(toc - tic)
@@ -238,7 +235,7 @@ def run_on_batch(inputs, net, opts):
             ##
             result_batch, latent = net(new_latent, randomize_noise=False, resize=opts.resize_outputs, input_code=True, return_latents=True)
         else:
-            result_batch, latent = net(latent, randomize_noise=False, resize=opts.resize_outputs, input_code=True, return_latents=True)
+            result_batch, latent = net(inputs, randomize_noise=False, resize=opts.resize_outputs, return_latents=True)
     else:
         latent_mask = [int(l) for l in opts.latent_mask.split(",")]
         result_batch = []
@@ -257,8 +254,7 @@ def run_on_batch(inputs, net, opts):
                       return_latents = True)
             result_batch.append(res)
         result_batch = torch.cat(result_batch, dim=0)
-    if opts.do_latent_ops:
-        return result_batch, latent, sigma
+    
     return result_batch, latent
 
 
