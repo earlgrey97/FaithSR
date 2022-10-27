@@ -135,14 +135,21 @@ def run():
     sigmas_hr_avg = []
     for i in range(18):
         sigmas_hr_avg.append(np.average(sigmas_to_avg[i]))
-    print("hr avg sigma: ", sigmas_hr_avg)
+    #print("hr avg sigma: ", sigmas_hr_avg)
 ##
-def calc_code(w_conf, sigma_conf, w_i, sigma_i):
+def calc_code(w_conf, sigma_conf, w_i, sigma_i): # w is 512 * 1
     # sigma_conf < sigma_i for all i in each level
-    print("calc")
-    #print(sigma_conf, sigma_i)
+    print("--- calc ---")
+    print(sigma_conf, sigma_i)
     sigma_sum = sigma_i + sigma_conf
-    new_code = (sigma_conf/sigma_sum)*w_i + (sigma_i/sigma_sum)*w_conf
+    print("sigma_i", sigma_i)
+    print("sigma_conf", sigma_conf)
+    print("sigma_sum", sigma_sum)
+
+    print("w_i[0]", w_i[0])
+    print("w_conf[0]", w_conf[0])
+    new_code = (sigma_i/sigma_sum)*w_i + (sigma_conf/sigma_sum)*w_conf
+    print("new_code[0]", new_code[0])
     return new_code
 
 def normalize_sigma(sigma): # sigma is list with len 18
@@ -152,8 +159,11 @@ def normalize_sigma(sigma): # sigma is list with len 18
     return new_sigma
 
 def latent_ops(codes, sigma):
+    print(codes.shape)
     sigma = sigma.tolist()
+    # print("sigma", sigma)
     sigma = normalize_sigma(sigma)
+    # print("norm sigma", sigma)
     print("----- do latent operations -----")
     #print("sigma: ", sigma)
     # print("codes")
@@ -173,6 +183,7 @@ def latent_ops(codes, sigma):
     sigma_m = sigma.index(conf_m)
     conf_f = min(sigma[middle_ind:])
     sigma_f = sigma.index(conf_f)
+    print(sigma_c, sigma_m, sigma_f)
 	# new w vectors
     new_codes = []
 	## coarse
@@ -190,13 +201,17 @@ def latent_ops(codes, sigma):
     res = torch.stack((new_codes[0],new_codes[1],new_codes[2],new_codes[3],new_codes[4],new_codes[5],
                         new_codes[6],new_codes[7],new_codes[8],new_codes[9],new_codes[10],new_codes[11],
                         new_codes[12],new_codes[13],new_codes[14],new_codes[15],new_codes[16],new_codes[17]))
-    print(res.shape)
+    #print(res.shape)
     return res
 ##
 
 def run_on_batch(inputs, net, opts):
     #torch.manual_seed(seed)
     #print('seed', seed)
+    if opts.save_latents:
+        result_batch, mid_latent = net(inputs, randomize_noise=False, resize=opts.resize_outputs, mid_latent = True)
+        return result_batch, mid_latent
+
     if opts.latent_mask is None:
         result_batch, latent = net(inputs, randomize_noise=False, resize=opts.resize_outputs, return_latents=True, mc_samples=5)
 

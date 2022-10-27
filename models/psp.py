@@ -97,7 +97,7 @@ class pSp(nn.Module):
 	##
 
 	def forward(self, x, resize=True, latent_mask=None, input_code=False, randomize_noise=True,
-	            inject_latent=None, return_latents=False, alpha=None, mc_samples = 1):
+	            inject_latent=None, return_latents=False, alpha=None, mc_samples = 1, mid_latent = False):
 		#print("-----psp.py forward function-----")
 		if input_code:
 			codes = x
@@ -126,11 +126,15 @@ class pSp(nn.Module):
 												randomize_noise=randomize_noise,
 												return_latents=return_latents) 
 
+		if mid_latent:
+			return images, codes
+
 		if resize:
 			images = self.face_pool(images)
 
 		if return_latents:
 			return images, result_latent
+
 		else:
 			return images
 
