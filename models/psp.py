@@ -83,10 +83,70 @@ class pSp(nn.Module):
 				codes = codes + self.latent_avg.repeat(codes.shape[0], 1, 1)
 		return codes
 
+	def stack_latents(self, j, latents):
+		#ex) i = 3
+		if j == 0:
+			temp = [latents[1]]
+		return new_latents
+
+	def calc_best_ws(self, x, mc_samples=5): # x = inputs # return [1,18,512] tensor
+		ws = [self.encoder(x), self.encoder(x), self.encoder(x), self.encoder(x), self.encoder(x)]
+		# sigmas의 각 리스트의 길이는 mc_samples
+		best_idx = [] # length 18
+		# for _ in range(mc_samples):
+		# 	ws.append(self.encoder(x))
+		#ws = [self.encoder(x), self.encoder(x), self.encoder(x), self.encoder(x), self.encoder(x)] 
+		#print(ws[0].shape) # [1,18,512]
+		for j in range(18):
+			sigmas = [] # len : 5
+			for i in range(mc_samples): 
+				temp = []
+				if i == 0:
+					temp.extend(ws[i+1:])
+				elif i == mc_samples-1:
+					temp.extend(ws[:i])
+				else:
+					temp.extend(ws[:i])
+					temp.extend(ws[i+1:])
+				#print("i, temp: ",i,len(temp))
+				curr = torch.stack(temp, dim=0) # curr latents to compute [4,1,18,512]
+				#print("curr", curr.shape)
+				sigma, curr = torch.std_mean(curr, dim=0)
+				sigma = sigma.sum(dim=-1) # [1, 18] i=0이면 2,3,4,5 sigma. 거기서 j번째를 가져와야함.
+				sigma = sigma.squeeze()
+				#print("sigma j",float(sigma[j]))
+				sigmas.append(float(sigma[j]))
+			#print("sigmas",sigmas)
+			best_idx.append(sigmas.index(max(sigmas)))
+	
+		best_ws = [] # should get 18 512x1 vectors
+		for i, idx in enumerate(best_idx): #i는 0-17
+			best_w = ws[idx][:,i,:]
+			best_ws.append(best_w)
+		#print("best_idx", best_idx)
+		
+		# curr = latents[1:,:,:,:]
+		# sigma, codes = torch.std_mean(codes, dim=0)
+		best_ws = torch.stack(best_ws, dim=1)
+
+		# codes = torch.stack(ws, dim=0)
+		# _, best_ws = torch.std_mean(codes, dim=0)
+		if self.opts.start_from_latent_avg:
+			if self.opts.learn_in_w:
+				best_ws = best_ws + self.latent_avg.repeat(best_ws.shape[0], 1)
+			else:
+				best_ws = best_ws + self.latent_avg.repeat(best_ws.shape[0], 1, 1)
+		return best_ws
+
 	def get_code_w_sigma(self, x, mc_samples=1) :
-		codes = torch.stack([self.encoder(x) for _ in range(mc_samples)], dim=0)
+		ws = [self.encoder(x), self.encoder(x), self.encoder(x), self.encoder(x), self.encoder(x)]
+		codes = torch.stack(ws, dim=0)
+		#print("code shape: ", codes.shape) # [5,1,18,512]
 		sigma, codes = torch.std_mean(codes, dim=0)
+		#print("code shape: ", codes.shape) # [1,18,512]
+		#print("sigma shape: ", sigma.shape) # [1,18,512]
 		sigma = sigma.sum(dim=-1)
+		#print("sigma shape: ", sigma.shape) # [1,18]
 		# normalize with respect to the center of an average face
 		if self.opts.start_from_latent_avg:
 			if self.opts.learn_in_w:
