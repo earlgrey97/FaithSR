@@ -7,6 +7,7 @@
 
 <a href="http://colab.research.google.com/github/eladrich/pixel2style2pixel/blob/master/notebooks/inference_playground.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" height=22.5></a>  
 
+> This REPO is a code for FaithSR, based on the github code of pixel2style2pixel (pSp)
 > We present a generic image-to-image translation framework, pixel2style2pixel (pSp). 
 Our pSp framework is based on a novel encoder network that directly generates a series of style vectors which are fed into a pretrained StyleGAN generator, 
 forming the extended W+ latent space. We first show that our encoder can directly embed real images into W+, with no additional optimization.
